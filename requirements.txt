@@ -15,6 +15,7 @@ streamlit
 
 # Utilities
 python-dotenv
+requests
 
 # ── Arize Phoenix — local LLM tracing dashboard (http://localhost:6006) ───────
 arize-phoenix>=4.0.0
