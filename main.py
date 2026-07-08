@@ -101,15 +101,15 @@ def check_models_exist():
     base = Path(__file__).parent
     models_dir = _resolve_models_dir(base)
     if models_dir is None:
-        _MODELS_TMP.mkdir(parents=True, exi
+        _MODELS_TMP.mkdir(parents=True, exist_ok=True)
         with st.spinner("⚙️ First-time setup: training ML models (~30 s)..."):
             try:
                 from ml.train_pipeline import run_full_pipeline
                 run_full_pipeline(
                     training_dir   = base / "data" / "training_dataset",
-                    evaluation_dir = base /",
+                    evaluation_dir = base / "data" / "evaluation_dataset",
                     output_dir     = _MODELS_TMP,
-                    processed_dir  = _MODEL
+                    processed_dir  = _MODELS_TMP / "processed",
                 )
                 models_dir = _MODELS_TMP
                 st.success("✅ Models trained successfully!")
