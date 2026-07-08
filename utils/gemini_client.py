@@ -79,7 +79,7 @@ Follows lang_demo project patterns with API key rotation support.
 #         raise ImportError("CrewAI is not installed. Install with: pip install crewai")
 
 #     api_key = get_first_api_key()
-#     model_name = os.getenv("GEMINI_MODEL", "gemini/gemini-2.5-flash-lite")
+#     model_name = os.getenv("GEMINI_MODEL", "gemini/gemini-1.5-flash")
 
 #     if not api_key:
 #         raise ValueError(
@@ -202,7 +202,7 @@ Follows lang_demo project patterns with API key rotation support.
 #             "No Gemini API keys found. Set GEMINI_API_KEY or GEMINI_API_KEY_1..4 in .env file"
 #         )
 
-#     model_name = os.getenv("GEMINI_MODEL", "gemini/gemini-2.5-flash-lite")
+#     model_name = os.getenv("GEMINI_MODEL", "gemini/gemini-1.5-flash")
 #     last_error = None
 
 #     for i, api_key in enumerate(keys):
@@ -242,7 +242,7 @@ Follows lang_demo project patterns with API key rotation support.
 #     if not keys:
 #         raise ValueError("No Gemini API keys found.")
 
-#     model_name = os.getenv("GEMINI_MODEL", "gemini/gemini-2.5-flash-lite")
+#     model_name = os.getenv("GEMINI_MODEL", "gemini/gemini-1.5-flash")
 #     idx = _current_key_index % len(keys)
 #     api_key = keys[idx]
 #     _current_key_index = (idx + 1) % len(keys)
@@ -368,7 +368,7 @@ def _try_gemini_fallback() -> object:
             "No Gemini keys found. Set GEMINI_API_KEY_1..4 in .env as fallback."
         )
 
-    gemini_model = os.getenv("GEMINI_MODEL", "gemini/gemini-2.5-flash-lite")
+    gemini_model = os.getenv("GEMINI_MODEL", "gemini/gemini-flash-lite-latest")
     last_error = None
 
     for i, api_key in enumerate(gemini_keys):
@@ -413,6 +413,10 @@ def initialize_gemini_llm() -> object:
     groq_key = os.getenv("GROQ_API_KEY")
     if groq_key:
         groq_model = os.getenv("GROQ_MODEL", "groq/llama-3.3-70b-versatile")
+        # Enforce groq/ prefix — without it CrewAI's LLM router falls back to OpenAI
+        # and sends the Groq key (gsk_...) to api.openai.com → 401.
+        if not groq_model.startswith("groq/"):
+            groq_model = f"groq/{groq_model}"
         try:
             llm = LLM(model=groq_model, api_key=groq_key)
             logger.info(f"✅ Groq LLM initialized: {groq_model}")
@@ -451,6 +455,8 @@ def initialize_gemini_llm_with_fallback() -> tuple:
     groq_key = os.getenv("GROQ_API_KEY")
     if groq_key:
         groq_model = os.getenv("GROQ_MODEL", "groq/llama-3.3-70b-versatile")
+        if not groq_model.startswith("groq/"):
+            groq_model = f"groq/{groq_model}"
         try:
             from crewai import LLM
             llm = LLM(model=groq_model, api_key=groq_key)
@@ -465,7 +471,7 @@ def initialize_gemini_llm_with_fallback() -> tuple:
     if not keys:
         raise ValueError("No API keys found — set GROQ_API_KEY or GEMINI_API_KEY_1..4 in .env")
 
-    gemini_model = os.getenv("GEMINI_MODEL", "gemini/gemini-2.5-flash-lite")
+    gemini_model = os.getenv("GEMINI_MODEL", "gemini/gemini-1.5-flash")
     idx = _current_key_index % len(keys)
     api_key = keys[idx]
     _current_key_index = (idx + 1) % len(keys)
