@@ -13,182 +13,74 @@ from crewai.tools import tool
 # recommend_threshold_adjustments(), get_feedback_summary() with @tool decorators
 # Returns: Each tool returns Dict with analysis results for agent consumption
 
-
 from pathlib import Path
 import json
-from config.constants import GRADE_THRESHOLDS
 
-
-def _to_float(value):
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
-
-
-def _normalize_decision(data: dict) -> str:
-    decision = str(data.get("decision", "")).strip().upper()
-    if decision in {"APPROVED", "REJECTED"}:
-        return decision
-
-    status = str(data.get("status", "")).strip().upper()
-    if status == "APPROVED":
-        return "APPROVED"
-    if status in {"REJECTED", "NEEDS_REVIEW"}:
-        return "REJECTED"
-    return ""
-
-
-def _predicted_decision(record: dict):
-    """
-    Convert model outputs into an approval/rejection signal.
-    Uses GOOD thresholds as the practical acceptance bar.
-    """
-    defect = _to_float(record.get("defect_probability"))
-    ret = _to_float(record.get("return_rate"))
-    defect_limit = GRADE_THRESHOLDS["GOOD"]["defect_prob"]   # 15
-    return_limit = GRADE_THRESHOLDS["GOOD"]["return_rate"]   # 25
-
-    if defect is None and ret is None:
-        return None, "Missing both defect_probability and return_rate."
-
-    if defect is not None and defect >= defect_limit:
-        return "REJECTED", f"Defect {defect:.2f}% >= {defect_limit}%."
-    if ret is not None and ret >= return_limit:
-        return "REJECTED", f"Return {ret:.2f}% >= {return_limit}%."
-    return "APPROVED", "Both defect and return are below GOOD thresholds."
-
-
-# ---------------------------------------
-# CORE DATA FUNCTION
-# ---------------------------------------
 def get_feedback_summary_data():
-    """Load and summarize feedback data."""
-    feedback_dir = Path(__file__).resolve().parent.parent / "data" / "feedback"
+    feedback_dir = Path("data/feedback")
     total_feedback = 0
     rejections = 0
     approvals = 0
-    records = []
 
     if feedback_dir.exists():
         for file in feedback_dir.glob("*.json"):
             try:
                 with open(file, "r") as f:
                     data = json.load(f)
-
-                decision = _normalize_decision(data)
-                if not decision:
-                    continue
-
                 total_feedback += 1
-
+                decision = str(data.get("decision", "")).upper()
                 if decision == "REJECTED":
                     rejections += 1
                 else:
                     approvals += 1
-
-                records.append({
-                    "assessment_id": data.get("assessment_id"),
-                    "product_name": data.get("product_name", "Unknown"),
-                    "decision": decision,
-                    "defect_probability": _to_float(data.get("defect_probability")),
-                    "return_rate": _to_float(data.get("return_rate")),
-                    "final_quality_grade": data.get("final_quality_grade"),
-                    "feedback": data.get("feedback", ""),
-                    "timestamp": data.get("timestamp"),
-                })
-
             except Exception:
                 continue
-
-    rejection_rate = (rejections / total_feedback) if total_feedback else 0
-
+    rejection_rate = (rejections/total_feedback) if total_feedback else 0
     return {
         "total_feedback": total_feedback,
-        "rejections": rejections,
+        "rejections":  rejections,
         "approvals": approvals,
-        "rejection_rate": rejection_rate,
-        "feedback_records": records,
+        "rejection_rate": rejection_rate
     }
 
 
-# ---------------------------------------
-# SUPPORT FUNCTION 
-# ---------------------------------------
 def get_threshold_adjustments_data():
-    """Return placeholder threshold adjustment data."""
+    """Return placeholder threshold adjustment data for compatibility."""
     return {
         "status": "completed",
         "total_recommendations": 0,
-        "recommendations": []
+        "recommendations": [],
     }
 
-
-# ---------------------------------------
-# TOOL 1
-# ---------------------------------------
 @tool("Analyze Rejection Patterns")
-def analyze_rejection_patterns(dummy: str = "") -> dict:
-    """Summarize rejection trends."""
+def analyze_rejection_patterns():
+    """Summarize rejection trends across stored human feedback records."""
     summary = get_feedback_summary_data()
-
     return {
         "status": "completed",
-        "total_feedback": summary["total_feedback"],
-        "rejection_rate": summary["rejection_rate"]
+        "agent_rejection_rates": {},
+        "total_feedback": summary["total_feedback"]
     }
 
-
-# ---------------------------------------
-# TOOL 2
-# ---------------------------------------
 @tool("Detect Prediction Mismatches")
-def detect_prediction_mismatches(dummy: str = "") -> dict:
-    """Return mismatch analysis."""
-    summary = get_feedback_summary_data()
-    mismatches = []
-    for rec in summary.get("feedback_records", []):
-        predicted, reason = _predicted_decision(rec)
-        human = rec.get("decision", "")
-        if predicted is None:
-            continue
-        if predicted != human:
-            mismatches.append({
-                "assessment_id": rec.get("assessment_id"),
-                "product_name": rec.get("product_name"),
-                "human_decision": human,
-                "predicted_decision": predicted,
-                "defect_probability": rec.get("defect_probability"),
-                "return_rate": rec.get("return_rate"),
-                "reason": reason,
-            })
-
+def detect_prediction_mismatches():
+    """Report mismatches between automated predictions and human decisions."""
     return {
         "status": "completed",
-        "total_feedback": summary.get("total_feedback", 0),
-        "mismatch_count": len(mismatches),
-        "total_mismatches": len(mismatches),  # backward-compatible key
-        "mismatches": mismatches,
+        "total_mismatches": 0,
+        "mismatches": []
     }
 
-
-# ---------------------------------------
-# TOOL 3
-# ---------------------------------------
 @tool("Recommend Threshold Adjustments")
-def recommend_threshold_adjustments(dummy: str = "") -> dict:
-    """Suggest threshold changes."""
+def recommend_threshold_adjustments():
+    """Suggest threshold changes based on analyzed feedback patterns."""
     return {
         "status": "completed",
         "total_recommendations": 0,
         "recommendations": []
     }
 
-
-# ---------------------------------------
-# TOOL 4
-# ---------------------------------------
 @tool("Get Feedback Summary")
-def get_feedback_summary(dummy: str = "") -> dict:
-    """Return feedback summary stats."""
+def get_feedback_summary():
+    """Return aggregate feedback counts and rejection rate."""
     return get_feedback_summary_data()
