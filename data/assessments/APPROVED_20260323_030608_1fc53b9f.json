@@ -1,0 +1,56 @@
+{
+  "product_name": "Wireless Bluetooth Headphones - Premium",
+  "timestamp": "2026-03-23T03:05:02.231320",
+  "status": "PENDING_REVIEW",
+  "defect_analysis": {
+    "defect_probability": 8.02,
+    "risk_level": "CRITICAL",
+    "analysis_summary": "The predicted defect probability of 8.02% suggests a MEDIUM risk level. This is based on the current product specifications, including a moderate material quality score (4/X) and established market history (3456 reviews)."
+  },
+  "quality_assessment": {
+    "return_rate": 37.49,
+    "quality_score": 77.2,
+    "assessment_summary": "The predicted return rate is 37.49%, resulting in a quality score of 62.51. This suggests moderate reliability issues given the input parameters, such as the material quality score of 4 and the specific manufacturing country/market context."
+  },
+  "supply_chain_analysis": {
+    "supplier_country": "CHINA",
+    "supplier_reliability": 3.8,
+    "lead_time_days": 28,
+    "certifications": [
+      "ISO 9001",
+      "CCC"
+    ],
+    "supply_chain_assessment": "High volume production capabilities are present, but elevated geopolitical risk mandates diversification strategies. Lead times are moderate, requiring careful inventory planning to mitigate potential disruptions."
+  },
+  "cost_impact_analysis": {
+    "estimated_defective_units": 200,
+    "estimated_returned_units": 937,
+    "total_financial_impact": 71765.85,
+    "risk_level": "CRITICAL",
+    "cost_breakdown": "Revenue loss from defective units ($13031.50) + Revenue loss from returns ($121826.50) - Inventory Write-off Savings ($108392.15) + Estimated Handling Costs ($22184.42) = $71765.85"
+  },
+  "market_trend_analysis": {
+    "market_demand": "VERY HIGH",
+    "competitive_position": "STRONG",
+    "trend_analysis": "The VERY HIGH demand index combined with a significant volume of positive reviews indicates strong current market appetite for this product category. The product maintains a STRONG competitive position given its high rating and substantial review base, suggesting solid customer satisfaction despite a competitive environment."
+  },
+  "recommendation": {
+    "overall_assessment": "The product exhibits very high demand but suffers from an unacceptably high 37.49% return rate, signaling critical quality defects that must be addressed before full scale-up, despite moderate supply chain risks.",
+    "recommendations": [
+      "Immediately halt large-scale shipments until the root cause of the 37.49% return rate is identified and defects are reduced below 5%.",
+      "Develop and execute a supplier diversification strategy to mitigate elevated geopolitical risks identified in the supply chain analysis.",
+      "Leverage strong competitive standing to delay full market entry until quality metrics align with industry best practices for this premium category."
+    ],
+    "approval_status": "PENDING_REVIEW",
+    "final_quality_grade": "ACCEPTABLE"
+  },
+  "_raw_defect": "{\"defect_probability\": 8.02, \"risk_level\": \"MEDIUM\", \"analysis_summary\": \"The predicted defect probability of 8.02% suggests a MEDIUM risk level. This is based on the current product specifications, including a moderate material quality score (4/X) and established market history (3456 reviews).\"}",
+  "_raw_quality": "{\"return_rate\": 37.49, \"quality_score\": 62.51, \"assessment_summary\": \"The predicted return rate is 37.49%, resulting in a quality score of 62.51. This suggests moderate reliability issues given the input parameters, such as the material quality score of 4 and the specific manufacturing country/market context.\"}",
+  "_raw_supply": "{\n  \"supplier_country\": \"CHINA\",\n  \"supplier_reliability\": 3.8,\n  \"lead_time_days\": 28,\n  \"certifications\": [\"ISO 9001\", \"CCC\"],\n  \"supply_chain_assessment\": \"High volume production capabilities are present, but elevated geopolitical risk mandates diversification strategies. Lead times are moderate, requiring careful inventory planning to mitigate potential disruptions.\"\n}",
+  "_raw_cost": "{\n  \"estimated_defective_units\": 200,\n  \"estimated_returned_units\": 937,\n  \"total_financial_impact\": 71765.85,\n  \"risk_level\": \"CRITICAL\",\n  \"cost_breakdown\": \"Revenue loss from defective units ($13031.50) + Revenue loss from returns ($121826.50) - Inventory Write-off Savings ($108392.15) + Estimated Handling Costs ($22184.42) = $71765.85\"\n}",
+  "_raw_market": "{\"market_demand\": \"VERY HIGH\", \"competitive_position\": \"STRONG\", \"trend_analysis\": \"The VERY HIGH demand index combined with a significant volume of positive reviews indicates strong current market appetite for this product category. The product maintains a STRONG competitive position given its high rating and substantial review base, suggesting solid customer satisfaction despite a competitive environment.\"}",
+  "_raw_rec": "{\"overall_assessment\": \"The product exhibits very high demand but suffers from an unacceptably high 37.49% return rate, signaling critical quality defects that must be addressed before full scale-up, despite moderate supply chain risks.\", \"recommendations\": [\"Immediately halt large-scale shipments until the root cause of the 37.49% return rate is identified and defects are reduced below 5%.\", \"Develop and execute a supplier diversification strategy to mitigate elevated geopolitical risks identified in the supply chain analysis.\", \"Leverage strong competitive standing to delay full market entry until quality metrics align with industry best practices for this premium category.\"], \"approval_status\": \"PENDING_REVIEW\", \"final_quality_grade\": \"ACCEPTABLE\"}",
+  "assessment_id": "1fc53b9f",
+  "human_status": "APPROVED",
+  "human_feedback": "good"
+}
