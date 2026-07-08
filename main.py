@@ -23,9 +23,9 @@ ssl._create_default_https_context = ssl._create_unverified_context
 import json
 import pickle
 import uuid
-from datetime import datetime
-from pathlib import Path
+import tempfile
 from datetime import datetime, timezone
+from pathlib import Path
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -33,8 +33,6 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 from config.constants import (
     ASSESSMENT_TABS,
-    DATA_ASSESSMENTS_DIR,
-    DATA_FEEDBACK_DIR,
     ML_FEATURES_ORDERED,
     PRODUCTS_FILE,
     STATUS_APPROVED,
@@ -43,6 +41,15 @@ from config.constants import (
     VALID_COUNTRIES,
     FEEDBACK_KEYWORDS,
 )
+
+# ── Writable data dirs: use repo path locally, /tmp on Streamlit Cloud ────────
+_REPO_DATA = Path(__file__).parent / "data"
+_BASE_DATA = _REPO_DATA if os.access(str(_REPO_DATA), os.W_OK) else Path(tempfile.gettempdir()) / "qualityguard_data"
+DATA_ASSESSMENTS_DIR = str(_BASE_DATA / "assessments")
+DATA_FEEDBACK_DIR    = str(_BASE_DATA / "feedback")
+# Tell feedback tool where feedback lives (read by tools/feedback_analysis_tool.py)
+os.environ["QUALITYGUARD_FEEDBACK_DIR"]    = DATA_FEEDBACK_DIR
+os.environ["QUALITYGUARD_ASSESSMENTS_DIR"] = DATA_ASSESSMENTS_DIR
 from flows.quality_assessment_flow import QualityAssessmentFlow
 from utils.gemini_client import initialize_gemini_llm
 # ── Arize Phoenix tracing (auto-instruments CrewAI agents) ────────────────────
@@ -56,9 +63,9 @@ def _init_tracing():
         from openinference.instrumentation.crewai import CrewAIInstrumentor
         import requests
 
-        # Only connect if Phoenix is actually running
+        # Only connect if Phoenix is actually running (0.5s timeout to not slow Cloud startup)
         try:
-            requests.get("http://localhost:6006", timeout=2)
+            requests.get("http://localhost:6006", timeout=0.5)
         except Exception:
             return   # Phoenix not running — skip silently
 
