@@ -1,93 +1,27 @@
-# """
-# Return rate predictor tool for predicting expected return rate.
+"""
+Return rate predictor tool for predicting expected return rate.
 
-# Uses trained Gradient Boosting model to predict return rate (0-100%)
-# based on product features.
-# """
+Uses trained Gradient Boosting model to predict return rate (0-100%)
+based on product features.
+"""
 
-# from crewai.tools import tool
+# TODO: Implement predict_return_rate() as CrewAI tool
+# Purpose: Predict return rate (0-100%) using trained Gradient Boosting ML model
+# Parameters: product features (9 numerical/categorical features as individual parameters)
+# Returns: String with formatted return rate percentage prediction
 
-# # TODO: Implement predict_return_rate() as CrewAI tool
-# # Purpose: Predict return rate (0-100%) using trained Gradient Boosting ML model
-# # Parameters: product features (9 numerical/categorical features as individual parameters)
-# # Returns: String with formatted return rate percentage prediction
-
-# import pickle
-# import numpy as np
-# import pandas as pd
-# from pathlib import Path
-
-
-# def _encode_country(encoder, product_manufacturing_country: str) -> int:
-#     normalized_country = str(product_manufacturing_country).strip().upper()
-#     known_labels = list(getattr(encoder, "classes_", []))
-#     fallback_label = known_labels[0] if known_labels else normalized_country
-#     safe_country = normalized_country if normalized_country in known_labels else fallback_label
-#     return int(encoder.transform([safe_country])[0])
-
-
-# @tool("Predict Return Rate")
-# def predict_return_rate(
-#     product_price_usd: float,
-#     warranty_period_months: int,
-#     customer_review_count: int,
-#     customer_average_rating: float,
-#     material_quality_score: int,
-#     supplier_reliability_rating: float,
-#     product_age_days: int,
-#     market_demand_index: float,
-#     product_manufacturing_country: str
-# ) -> str:
-#     """Predict return rate for a product using the trained model."""
-#     try:
-#         project_root = Path(__file__).resolve().parent.parent
-#         models_dir = project_root/"ml"/"models"
-#         model_path = models_dir/"return_predictor.pkl"
-#         scaler_path = models_dir/"return_scaler.pkl"
-#         encoder_path = models_dir/"return_encoder.pkl"
-
-#         with open(model_path, "rb") as f:
-#             model= pickle.load(f)
-#         with open(scaler_path, "rb") as f:
-#             scaler= pickle.load(f)
-#         with open(encoder_path, "rb") as f:
-#             encoder= pickle.load(f)
-        
-#         country_encoded = _encode_country(encoder, product_manufacturing_country)
-#         features= [
-#             country_encoded,
-#             product_price_usd,
-#             warranty_period_months,
-#             customer_review_count,
-#             customer_average_rating,
-#             material_quality_score,
-#             supplier_reliability_rating,
-#             product_age_days,
-#             market_demand_index
-#         ]
-#         X = pd.DataFrame([features], columns=[
-#             "product_manufacturing_country",
-#             "product_price_usd",
-#             "warranty_period_months",
-#             "customer_review_count",
-#             "customer_average_rating",
-#             "material_quality_score",
-#             "supplier_reliability_rating",
-#             "product_age_days",
-#             "market_demand_index",
-#         ])
-#         X_scaled= scaler.transform(X)
-#         prediction= model.predict(X_scaled)[0]
-
-#         return_rate = max(0, min(float(prediction), 100))
-        
-#         return f"Return Rate Prediction: {return_rate:.2f}%"
-#     except Exception as e:
-#         return f"Error predicting return rate: {str(e)}"
+import os
 from crewai.tools import tool
 import pickle
 import numpy as np
 from pathlib import Path
+
+_DEFAULT_MODELS = Path(__file__).resolve().parent.parent / "ml" / "models"
+
+
+def _models_dir() -> Path:
+    return Path(os.environ.get("QUALITYGUARD_MODELS_DIR", str(_DEFAULT_MODELS)))
+
 
 @tool("Predict Return Rate")
 def predict_return_rate(
@@ -103,7 +37,7 @@ def predict_return_rate(
 ) -> str:
     """Predict product return rate (0-100%) using trained Random Forest model."""
     try:
-        models_dir = Path(__file__).resolve().parent.parent / "ml" / "models"
+        models_dir = _models_dir()
         model   = pickle.load(open(models_dir/"return_predictor.pkl", "rb"))
         scaler  = pickle.load(open(models_dir/"return_scaler.pkl",    "rb"))
         encoder = pickle.load(open(models_dir/"return_encoder.pkl",   "rb"))
