@@ -82,17 +82,30 @@ _init_tracing()
 # ─────────────────────────────────────────────────────────────────────────────
 
 def check_models_exist():
-    """Stop app with clear message if ML models are missing."""
-    models_dir = Path(__file__).parent / "ml" / "models"
+    """Auto-train ML models if pkl files are missing (e.g. fresh Streamlit Cloud deploy)."""
+    base = Path(__file__).parent
+    models_dir = base / "ml" / "models"
     required = [
         "defect_classifier.pkl", "defect_scaler.pkl", "defect_encoder.pkl",
         "return_predictor.pkl",  "return_scaler.pkl",  "return_encoder.pkl",
     ]
     missing = [f for f in required if not (models_dir / f).exists()]
-    if missing:
-        st.error(f"⚠ ML model files not found: {missing}")
-        st.info("Train the models first by running:\n```\npython ml/train_pipeline.py\n```")
-        st.stop()
+    if not missing:
+        return
+
+    with st.spinner("⚙️ First-time setup: training ML models (this takes ~30 seconds)..."):
+        try:
+            from ml.train_pipeline import run_full_pipeline
+            run_full_pipeline(
+                training_dir   = base / "data" / "training_dataset",
+                evaluation_dir = base / "data" / "evaluation_dataset",
+                output_dir     = models_dir,
+                processed_dir  = base / "data" / "processed",
+            )
+            st.success("✅ Models trained successfully!")
+        except Exception as exc:
+            st.error(f"⚠ Model training failed: {exc}")
+            st.stop()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
