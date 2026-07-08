@@ -4,28 +4,273 @@ QualityGuard Streamlit UI - Product Quality Assessment System.
 Main entry point for the quality assessment application.
 Orchestrates product quality analysis with ML models and multi-agent reasoning.
 """
-# to avoid ssl certificate error
-import ssl
-import os
-#SSL fix
-os.environ["PYTHONHTTPSVERIFY"] = "0"
-os.environ["CURL_CA_BUNDLE"] = ""
-os.environ["REQUESTS_CA_BUNDLE"] = ""
-ssl._create_default_https_context = ssl._create_unverified_context
-# TODO: Implement all UI functions and main() entry point
-# Purpose: Create Streamlit application with 4 main tabs: New Assessment, Assessment History, Feedback Analysis, Model Evaluation
-# Functions needed: initialize_session(), load_sample_products() with feature mapping, display_assessment_results(),
-# save_assessment(), load_all_assessments(), display_assessment_history(), display_feedback_analysis(),
-# display_ai_feedback_results(), generate_insights(), evaluate_defect_classifier(), evaluate_return_rate_predictor(),
-# display_model_evaluation_tab(), main() with sidebar configuration and Streamlit page setup
-# Returns: Interactive UI with assessment workflow, human approval gate, feedback collection, history tracking, model evaluation
+
+import streamlit as st
+import json
+from datetime import datetime
+from pathlib import Path
+import pickle
+import pandas as pd
+import numpy as np
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+
+from utils.gemini_client import initialize_gemini_llm
+from flows.quality_assessment_flow import QualityAssessmentFlow
+from config.constants import (
+    ASSESSMENT_TABS, PRODUCTS_FILE, DATA_ASSESSMENTS_DIR, DATA_FEEDBACK_DIR,
+    ML_FEATURES_ORDERED, CATEGORICAL_FEATURES, VALID_COUNTRIES,
+    STATUS_APPROVED, STATUS_REJECTED, STATUS_PENDING_REVIEW
+)
+
+
+# # TODO: Implement all UI functions and main() entry point
+# # Purpose: Create Streamlit application with 4 main tabs: New Assessment, Assessment History, Feedback Analysis, Model Evaluation
+# # Functions needed: initialize_session(), load_sample_products() with feature mapping, display_assessment_results(),
+# # save_assessment(), load_all_assessments(), display_assessment_history(), display_feedback_analysis(),
+# # display_ai_feedback_results(), generate_insights(), evaluate_defect_classifier(), evaluate_return_rate_predictor(),
+# # display_model_evaluation_tab(), main() with sidebar configuration and Streamlit page setup
+# # Returns: Interactive UI with assessment workflow, human approval gate, feedback collection, history tracking, model evaluation
+
+# def initialize_session():
+#     if "assessments" not in st.session_state:
+#         st.session_state.assessments=[]
+#     if "current_assessment" not in st.session_state:
+#         st.session_state.current_assessment=None
+#     if "human_decision" not in st.session_state:
+#         st.session_state.human_decision=None
+
+# def load_sample_products():
+#     # if not path(PRODUCTS_FILE).exists():
+#     #     st.error("Products file not found.")
+#     #     return []
+#     with open(PRODUCTS_FILE, "r") as f:
+#         products=json.load(f)
+    
+#     mapped_products=[]
+
+#     for p in products:
+#         # Previous mapping (kept as comment for traceability):
+#         # mapped_products.append({
+#         #     "name": p["name"],
+#         #     "product_price_usd": p["price"],
+#         #     "warranty_period_months": p["warranty"],
+#         #     "customer_review_count": p["reviews"],
+#         #     "customer_average_rating":p["rating"],
+#         #     "material_quality_score":p["material_quality"],
+#         #     "supplier_reliability_rating":p["supplier_rating"],
+#         #     "product_age_days":p["product_age"],
+#         #     "product_manufacturing_country":p["country"].upper(),
+#         #     "market_demand_index":p["market_demand"],
+#         #     "inventory":p.get("inventory",1000)
+#         # })
+
+#         # New mapping: include both `name` (UI) and `product_name` (flows) to avoid key mismatches.
+#         mapped_products.append({
+#             "name": p["name"],
+#             "product_name": p["name"],
+#             "product_price_usd": p["price"],
+#             "warranty_period_months": p["warranty"],
+#             "customer_review_count": p["reviews"],
+#             "customer_average_rating":p["rating"],
+#             "material_quality_score":p["material_quality"],
+#             "supplier_reliability_rating":p["supplier_rating"],
+#             "product_age_days":p["product_age"],
+#             "product_manufacturing_country":p["country"].upper(),
+#             "market_demand_index":p["market_demand"],
+#             "inventory":p.get("inventory",1000)
+#         })
+#     return mapped_products
+
+
+# def display_assessment_results(results):
+#     if not results:
+#         return
+#     tabs= st.tabs(ASSESSMENT_TABS)
+#     with tabs[0]:
+#         st.subheader("Defect Analysis")
+#         st.json(results.get("defect_analysis",{}))
+#     with tabs[1]:
+#         st.subheader("Quality Assessment")
+#         st.json(results.get("quality_assessment",{}))
+#     with tabs[2]:
+#         st.subheader("Supply Chain")
+#         st.json(results.get("supply_chain_analysis",{}))
+#     with tabs[3]:
+#         st.subheader("Cost Impact")
+#         st.json(results.get("cost_impact_analysis",{}))
+#     with tabs[4]:
+#         st.subheader("Market Trends")
+#         st.json(results.get("market_trend_analysis",{}))
+#     with tabs[5]:
+#         st.subheader("Recommendation")
+#         st.json(results.get("recommendation",{}))
+#     with tabs[6]:
+#         st.subheader("Debug / Raw Data")
+#         st.json(results)
+
+# def save_assessment(results,status, feedback):
+
+#     Path(DATA_ASSESSMENTS_DIR).mkdir(parents=True, exist_ok=True)
+#     Path(DATA_FEEDBACK_DIR).mkdir(parents=True,exist_ok=True)
+
+#     timestamp=datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+#     assessment_file=Path(DATA_ASSESSMENTS_DIR)/f"{timestamp}.json"
+#     with open(assessment_file, "w") as f:
+#         json.dump({
+#             "timestamp":timestamp,
+#             "status":status,
+#             "results":results,
+
+#         },f,indent=2)
+#     if feedback:
+#         feedback_file=Path(DATA_FEEDBACK_DIR) /f"{timestamp}.json"
+#         with open(feedback_file, "w") as f:
+#             json.dump({
+#                 "timestamp":timestamp,
+#                 "decision":status,
+#                 "feedback":feedback
+#             },f,indent=2)
+
+# def load_all_assessments():
+#     assessments=[]
+#     directory=Path(DATA_ASSESSMENTS_DIR)
+#     if not directory.exists():
+#         return []
+#     for file in directory.glob("*.json"):
+#         try:
+#             with open(file) as f:
+#                 assessments.append(json.load(f))
+#         except Exception:
+#             continue
+#     assessments.sort(key=lambda x:x.get("timestamp",""), reverse=True)
+#     return assessments
+
+# def display_assessment_history():
+#     st.subheader("Assessment History")
+#     history=load_all_assessments()
+#     if not history:
+#         st.info("No assessments found.")
+#         return
+#     for record in history:
+#         with st.expander(record["timestamp"]):
+#             st.write("Status:",record.get("status"))
+#             st.json(record.get("results", {}))
+
+
+# def display_feedback_analysis():
+#     st.subheader("Feedback Analysis")
+#     feedback_dir=Path(DATA_FEEDBACK_DIR)
+#     if not feedback_dir.exists():
+#         st.info("No feedback data available.")
+#         return
+#     feedback_records=[]
+#     for f in feedback_dir.glob("*.json"):
+#         with open(f) as file:
+#             feedback_records.append(json.load(file))
+#     st.write("Total Feedback Records:", len(feedback_records))
+#     st.json(feedback_records)
+
+# def display_ai_feedback_results(analysis):
+#     st.subheader("AI Feedback Analysis")
+#     if not analysis:
+#         st.info("No analysis available.")
+#         return
+#     st.json(analysis)
+
+# def generate_insights(feedback_data, feedback_reasons,rejections_count):
+#     insights=[]
+#     if rejections_count >0:
+#         insights.append("Products are occasionally rejected due to quality concerns.")
+#     if feedback_reasons:
+#         insights.append("Common rejection reasons detected.")
+#     return insights
+
+# def evaluate_defect_classifier():
+#     try:
+#         model_path=Path("ml/models/defect_classifier.pkl")
+#         if not model_path.exists():
+#             return  {"error": "Model not found"}
+#         with open(model_path, "rb") as f:
+#             model=pickle.load(f)
+#         return {"status": "model_loaded"}
+#     except Exception as e:
+#         return {"error": str(e)}
+# def evaluate_return_rate_predictor():
+#     try:
+#         model_path=Path("ml/models/return_predictor.pkl")
+#         if not model_path.exists():
+#             return {"error": "Model not found"}
+#         with open (model_path,"rb" ) as f:
+#             model=pickle.load(f)
+#         return {"status":"model_loaded"}
+#     except Exception as e:
+#         return {"error":str(e)}
+# def display_model_evaluation_tab():
+#     st.subheader("Model Evaluation")
+#     if st.button("Evaluate Defect Classifier"):
+#         st.json(evaluate_defect_classifier())
+#     if st.button("Evaluate Return Rate Predictor"):
+#         st.json(evaluate_return_rate_predictor())
+
+# def main():
+#     st.set_page_config(page_title="QualityGuard",layout="wide")
+#     initialize_session()
+#     st.title("QualityGuard - Product Quality Assessment System")
+#     tab1,tab2,tab3,tab4=st.tabs([
+#         "New Assessment",
+#         "Assessment History",
+#         "Feedback Analysis",
+#         "Model Evaluation"
+#     ])
+
+#     with tab1:
+#         products=load_sample_products()
+#         product_names=[p["name"] for p in products]
+#         selected_name= st.selectbox("Select Product", product_names)
+#         product_data=next((p for p in products if p["name"]== selected_name),None)
+#         if st.button("Run Assessment"):
+#             with st.spinner("Running multi-agent analysis..."):
+#                 llm=initialize_gemini_llm()
+#                 flow=QualityAssessmentFlow(llm)
+#                 results=flow.kickoff(product_data)
+#                 st.session_state.current_assessment=results
+#         display_assessment_results(st.session_state.current_assessment)
+#         if st.session_state.current_assessment:
+#             decision=st.radio(
+#                 "Human Review Decision",
+#                 [STATUS_APPROVED,STATUS_REJECTED,STATUS_PENDING_REVIEW],
+
+#             )
+#             feedback=st.text_area("Feedback (optional)")
+#             if st.button("Save Decision"):
+#                 save_assessment(
+#                     st.session_state.current_assessment,
+#                     decision,
+#                     feedback,
+
+#                 )
+#                 st.success("Assessment saved!")
+        
+#     # history
+#     with tab2:
+#         display_assessment_history()
+
+#     with tab3:
+#         display_feedback_analysis()
+    
+#     with tab4:
+#         display_model_evaluation_tab()
+
+# if __name__ == "__main__":
+#     main()
+# ------------------------------------------------------------------------------
 
 import json
 import pickle
 import uuid
 from datetime import datetime
 from pathlib import Path
-from datetime import datetime, timezone
+
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -41,7 +286,6 @@ from config.constants import (
     STATUS_PENDING_REVIEW,
     STATUS_REJECTED,
     VALID_COUNTRIES,
-    FEEDBACK_KEYWORDS,
 )
 from flows.quality_assessment_flow import QualityAssessmentFlow
 from utils.gemini_client import initialize_gemini_llm
@@ -82,30 +326,17 @@ _init_tracing()
 # ─────────────────────────────────────────────────────────────────────────────
 
 def check_models_exist():
-    """Auto-train ML models if pkl files are missing (e.g. fresh Streamlit Cloud deploy)."""
-    base = Path(__file__).parent
-    models_dir = base / "ml" / "models"
+    """Stop app with clear message if ML models are missing."""
+    models_dir = Path(__file__).parent / "ml" / "models"
     required = [
         "defect_classifier.pkl", "defect_scaler.pkl", "defect_encoder.pkl",
         "return_predictor.pkl",  "return_scaler.pkl",  "return_encoder.pkl",
     ]
     missing = [f for f in required if not (models_dir / f).exists()]
-    if not missing:
-        return
-
-    with st.spinner("⚙️ First-time setup: training ML models (this takes ~30 seconds)..."):
-        try:
-            from ml.train_pipeline import run_full_pipeline
-            run_full_pipeline(
-                training_dir   = base / "data" / "training_dataset",
-                evaluation_dir = base / "data" / "evaluation_dataset",
-                output_dir     = models_dir,
-                processed_dir  = base / "data" / "processed",
-            )
-            st.success("✅ Models trained successfully!")
-        except Exception as exc:
-            st.error(f"⚠ Model training failed: {exc}")
-            st.stop()
+    if missing:
+        st.error(f"⚠ ML model files not found: {missing}")
+        st.info("Train the models first by running:\n```\npython ml/train_pipeline.py\n```")
+        st.stop()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -113,7 +344,6 @@ def check_models_exist():
 # ─────────────────────────────────────────────────────────────────────────────
 
 def initialize_session():
-    # Initialize all session state keys used to persist UI data across reruns.
     defaults = {
         "assessments":            [],
         "current_assessment":     None,
@@ -135,7 +365,6 @@ def initialize_session():
 # ─────────────────────────────────────────────────────────────────────────────
 
 def load_sample_products():
-    # Load sample products and map raw JSON fields into the schema expected by the ML flow.
     with open(PRODUCTS_FILE) as f:
         products = json.load(f)
     mapped = []
@@ -158,10 +387,9 @@ def load_sample_products():
 
 
 def save_assessment(results: dict, status: str, feedback: str):
-    # Save the reviewed assessment plus reviewer feedback for history and feedback analysis.
     Path(DATA_ASSESSMENTS_DIR).mkdir(parents=True, exist_ok=True)
     Path(DATA_FEEDBACK_DIR).mkdir(parents=True, exist_ok=True)
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    ts  = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
     uid = str(uuid.uuid4())[:8]
     aid = results.get("assessment_id", uid)
 
@@ -180,7 +408,7 @@ def save_assessment(results: dict, status: str, feedback: str):
             "status":             status.upper(),
             "decision":           "APPROVED" if status == STATUS_APPROVED else "REJECTED",
             "feedback":           feedback,
-            "timestamp":          datetime.now(timezone.utc).isoformat(),
+            "timestamp":          datetime.utcnow().isoformat(),
             "defect_probability": results.get("defect_analysis", {}).get("defect_probability"),
             "return_rate":        results.get("quality_assessment", {}).get("return_rate"),
             "final_quality_grade":results.get("recommendation", {}).get("final_quality_grade"),
@@ -191,7 +419,6 @@ def save_assessment(results: dict, status: str, feedback: str):
 
 
 def load_all_assessments():
-    # Load all saved assessments from disk and return the newest records first.
     d = Path(DATA_ASSESSMENTS_DIR)
     if not d.exists():
         return []
@@ -213,7 +440,6 @@ GRADE_ICON = {"EXCELLENT": "🟢", "GOOD": "🟡", "ACCEPTABLE": "🟠", "POOR":
 
 
 def display_assessment_results(results: dict):
-    # Render the full assessment dashboard for the selected product.
     if not results:
         return
 
@@ -309,7 +535,6 @@ def display_assessment_results(results: dict):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def display_assessment_history():
-    # Show searchable assessment history with grade trends and side-by-side comparisons.
     st.header("📋 Assessment History")
     records = load_all_assessments()
     if not records:
@@ -394,7 +619,6 @@ def display_assessment_history():
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _compute_perf_from_files() -> dict:
-    # Estimate agent performance scores by scanning saved reviewer feedback for topic-specific keywords.
     fb_dir  = Path(DATA_FEEDBACK_DIR)
     records = []
     if fb_dir.exists():
@@ -406,7 +630,13 @@ def _compute_perf_from_files() -> dict:
                 pass
 
     total = max(len(records), 1)
-    keyword_map = FEEDBACK_KEYWORDS
+    keyword_map = {
+        "Product Analyzer": ["defect", "defective", "fault", "manufacturing"],
+        "Quality Assessor": ["quality", "return", "rating", "score"],
+        "Supply Chain":     ["supply", "supplier", "chain", "logistics"],
+        "Cost Impact":      ["cost", "financial", "impact", "loss", "budget"],
+        "Market Trend":     ["market", "demand", "trend", "competitive"],
+    }
     counts = {agent: 0 for agent in keyword_map}
     for r in records:
         text = (r.get("feedback", "") or "").lower()
@@ -423,7 +653,6 @@ def _compute_perf_from_files() -> dict:
 
 
 def _compute_thresholds_from_files() -> dict:
-    # Recommend threshold adjustments from historical rejection patterns in feedback files.
     fb_dir  = Path(DATA_FEEDBACK_DIR)
     records = []
     if fb_dir.exists():
@@ -475,7 +704,6 @@ def _compute_thresholds_from_files() -> dict:
 
 
 def display_ai_feedback_results(analysis: dict):
-    # Display the summarized AI feedback analysis results and recommended next actions.
     if not analysis:
         st.info("No analysis results available.")
         return
@@ -565,7 +793,6 @@ def display_ai_feedback_results(analysis: dict):
 
 
 def display_feedback_analysis():
-    # Build the feedback analysis tab from saved reviewer decisions and optional AI analysis.
     st.header("🔍 Feedback Analysis")
 
     fb_dir  = Path(DATA_FEEDBACK_DIR)
@@ -636,11 +863,12 @@ def display_feedback_analysis():
         st.divider()
         display_ai_feedback_results(st.session_state["ai_feedback_cache"])
 
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Tab 4 — Model Evaluation
 # ─────────────────────────────────────────────────────────────────────────────
+
 def _eval_model(model_pkl, scaler_pkl, encoder_pkl, eval_csv, target_col):
-    # Evaluate a saved ML model on the matching dataset and return standard regression metrics.
     root = Path(__file__).parent
     try:
         model   = pickle.load(open(root / "ml" / "models" / model_pkl,   "rb"))
@@ -674,7 +902,6 @@ def _eval_model(model_pkl, scaler_pkl, encoder_pkl, eval_csv, target_col):
 
 
 def display_model_evaluation_tab():
-    # Render the model evaluation tab and run each model on demand.
     st.header("📐 Model Evaluation")
     st.info("Runs both ML models against the evaluation dataset and shows real metrics.")
 
@@ -724,7 +951,6 @@ def display_model_evaluation_tab():
 # ─────────────────────────────────────────────────────────────────────────────
 
 def main():
-    # Assemble the full Streamlit app and connect each tab to its workflow.
     st.set_page_config(page_title="QualityGuard", page_icon="🛡️", layout="wide")
     check_models_exist()
     initialize_session()
@@ -916,5 +1142,7 @@ def main():
         display_feedback_analysis()
     with tab4:
         display_model_evaluation_tab()
+
+
 if __name__ == "__main__":
     main()
