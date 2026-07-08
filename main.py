@@ -109,20 +109,26 @@ def check_models_exist():
     models_dir = _resolve_models_dir(base)
     if models_dir is None:
         _MODELS_TMP.mkdir(parents=True, exist_ok=True)
-        with st.spinner("⚙️ First-time setup: training ML models (~30 s)..."):
-            try:
-                from ml.train_pipeline import run_full_pipeline
-                run_full_pipeline(
-                    training_dir   = base / "data" / "training_dataset",
-                    evaluation_dir = base / "data" / "evaluation_dataset",
-                    output_dir     = _MODELS_TMP,
-                    processed_dir  = _MODELS_TMP / "processed",
-                )
-                models_dir = _MODELS_TMP
-                st.success("✅ Models trained successfully!")
-            except Exception as exc:
-                st.error(f"⚠ Model training failed: {exc}")
-                st.stop()
+        # Use a placeholder so the spinner is fully removed after training —
+        # st.success() inside a plain spinner leaves a persistent banner that
+        # pushes the tab bar and all content down.
+        _placeholder = st.empty()
+        with _placeholder:
+            with st.spinner("⚙️ First-time setup: training ML models (~30 s)..."):
+                try:
+                    from ml.train_pipeline import run_full_pipeline
+                    run_full_pipeline(
+                        training_dir   = base / "data" / "training_dataset",
+                        evaluation_dir = base / "data" / "evaluation_dataset",
+                        output_dir     = _MODELS_TMP,
+                        processed_dir  = _MODELS_TMP / "processed",
+                    )
+                    models_dir = _MODELS_TMP
+                except Exception as exc:
+                    st.error(f"⚠ Model training failed: {exc}")
+                    st.stop()
+        _placeholder.empty()  # wipe the spinner — no vertical space left behind
+        st.toast("✅ Models ready!")  # non-blocking toast, takes up zero layout space
     os.environ["QUALITYGUARD_MODELS_DIR"] = str(models_dir)
 
 
